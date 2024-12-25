@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Images</title>
+</head>
+<body>
+    <h1>Captured Faces</h1>
+    <div>
+        {% for image in images %}
+            <div>
+                <img src="{{ url_for('get_image', filename=image) }}" alt="Attendance Image">
+            </div>
+        {% endfor %}
+        
+    </div>
+</body>
+</html>
