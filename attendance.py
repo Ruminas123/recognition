@@ -116,7 +116,7 @@ def process_frames():
                 y1, x2, y2, x1 = faceLoc
                 y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4  # Scale up
 
-                if face_percent_value < 0.4:
+                if face_percent_value < 0.45:
                     face_image = img[y1:y2, x1:x2]  # Crop the face region
                     new_file_name = f"{len(encodeListKnown) + 1}.jpg"
                     save_image_face(new_file_name, face_image)
