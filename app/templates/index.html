@@ -2,5 +2,14 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <img src="/video_feed" style="width:100%; max-width:800px;" alt="Stream not available">
+    <form action="{{ url_for('main_routes.uploader') }}" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Upload</button>
+    </form>
+    <div class="stream">
+        <img src="/video_feed" style="width:100%; max-width:800px;" alt="Stream not available">
+    </div>
 {% endblock %}
+
+
+   
