@@ -8,6 +8,10 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from pymongo import MongoClient
 import gridfs
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import os
+import shutil
 
 MONGO_URI = "mongodb://localhost:27017/"  # Replace with your MongoDB connection string
 DATABASE_NAME = "face_recognition"
@@ -135,7 +139,7 @@ def process_frames():
                 timestamp = datetime.now()
                 log_detection_to_mongo(name, face_percent_value, timestamp)
 
-            cv2.imshow('Webcam', img)
+            # cv2.imshow('Webcam', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
@@ -152,22 +156,75 @@ def log_detection_to_mongo(name: str, confidence: float, timestamp: datetime):
     except Exception as e:
         print(f"Failed to log to MongoDB: {e}")
 
+def upload_file():
+    # Open a file dialog to select a file
+    file_path = filedialog.askopenfilename(
+        title="Select a file",
+        filetypes=[("All Files", "*.*"), ("Text Files", "*.txt"), ("Images", "*.png;*.jpg;*.jpeg")]
+    )
+    if file_path:  # Check if a file is selected
+        # Ensure the 'uploads' folder exists
+        upload_folder = os.path.join(os.getcwd(), "ImagesAttendance")
+        os.makedirs(upload_folder, exist_ok=True)
+
+        # Get the file name and target path
+        file_name = os.path.basename(file_path)
+        target_path = os.path.join(upload_folder, file_name)
+
+        try:
+            # Copy the file to the 'uploads' folder
+            shutil.copy(file_path, target_path)
+            initializeKnownFaces() # Re-initialize known faces
+            messagebox.showinfo("File Uploaded", f"File saved to:\n{target_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file:\n{e}")
+    else:
+        messagebox.showwarning("No File Selected", "Please select a file to upload.")
+
 
 def main():
     initializeKnownFaces()
-    # rtsp_url = "http://192.168.100.22:9912"
+    # RTSP stream URL
     rtsp_url = "rtsp://admin:Abc12345@192.168.100.14/streaming/channels/101"
-    # rtsp_url = "rtsp://stream5:Abc12345@conic.myds.me:8005/Streaming/channels/501"
     cap = cv2.VideoCapture(rtsp_url)
 
-    capture_thread = threading.Thread(target=capture_frames, args=(cap,))
-    process_thread = threading.Thread(target=process_frames)
+    # Initialize Tkinter GUI
+    root = tk.Tk()
+    root.title("File Upload")
+
+    # Create an upload button
+    upload_button = tk.Button(root, text="Upload File", command=upload_file, font=("Arial", 14))
+    upload_button.pack(pady=20)
+
+    # Run the application
+    root.geometry("300x150")
+
+    # Add a simple GUI element
+    status_label = tk.Label(root, text="Face Recognition Running...", font=("Arial", 14))
+    status_label.pack(pady=20)
+
+    # Start background threads
+    capture_thread = threading.Thread(target=capture_frames, args=(cap,), daemon=True)
+    process_thread = threading.Thread(target=process_frames, daemon=True)
 
     capture_thread.start()
     process_thread.start()
 
-    capture_thread.join()
-    process_thread.join()
+    # Check threads' status (optional)
+    def check_threads():
+        if not capture_thread.is_alive() or not process_thread.is_alive():
+            status_label.config(text="Error: Background threads stopped!", fg="red")
+        root.after(1000, check_threads)  # Repeat every 1 second
+
+    check_threads()
+
+    # Start Tkinter mainloop
+    root.mainloop()
+
+    # Release resources after the GUI closes
+    cap.release()
+    cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     main()
