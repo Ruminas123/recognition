@@ -1,28 +1,72 @@
 import cv2
 import numpy as np
+import easyocr
 
-path = 'resources/ong.jpg'
-plate = cv2.CascadeClassifier('haarcascade_russian_plate_number.xml')
+def detect_license_plate(image_path):
+    """
+    Detect and recognize Thai license plates using primarily OCR.
+    
+    Args:
+        image_path (str): Path to the input image
+    Returns:
+        list: Detected license plate numbers
+        image: Annotated image
+    """
+    # Read the image
+    image = cv2.imread(image_path)
+    
+    # Initialize EasyOCR with Thai and English
+    reader = easyocr.Reader(['th', 'en'], gpu=False)
+    
+    # Direct OCR on the image
+    results = reader.readtext(image, allowlist='กขคจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ0123456789')
+    
+    detected_plates = []
+    
+    for (bbox, text, prob) in results:
+        # Filter by confidence
+        if prob > 0.5:
+            # Clean the text
+            text = ''.join(c for c in text if c.isdigit() or '\u0E00' <= c <= '\u0E7F')
+            
+            # Check if text matches Thai license plate pattern (numbers and Thai characters)
+            if any(c.isdigit() for c in text) and any('\u0E00' <= c <= '\u0E7F' for c in text):
+                detected_plates.append(text)
+                
+                # Draw bounding box
+                (top_left, top_right, bottom_right, bottom_left) = bbox
+                top_left = tuple(map(int, top_left))
+                bottom_right = tuple(map(int, bottom_right))
+                
+                # Draw rectangle and text
+                cv2.rectangle(image, top_left, bottom_right, (0, 255, 0), 2)
+                cv2.putText(image, text, (top_left[0], top_left[1]-10),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+    
+    return detected_plates, image
 
-minArea = 1000
+def main():
+    """
+    Main function to demonstrate license plate detection.
+    """
+    image_path = 'one.jpg'
+    try:
+        plates, annotated_image = detect_license_plate(image_path)
+        
+        if plates:
+            print("Detected license plates:")
+            for plate in plates:
+                print(f"- {plate}")
+            
+            # Display the result
+            cv2.imshow('Detected License Plates', annotated_image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        else:
+            print("No license plates detected.")
+            
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
 
-while True:
-    img = cv2.imread(path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    number_plate = plate.detectMultiScale(gray, 1.1, 4)
-
-    for (x, y, w, h) in number_plate:
-        area = w*h
-        if area > minArea:
-            cv2.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
-            cv2.putText(img, "Number Plate", (x,y-35),
-                            cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
-
-        imgRoi = img[y-30:y+h, x:x+w+30]
-        cv2.imshow('ROI', imgRoi)
-        cv2.imshow("Original", img)
-        cv2.waitKey(500)
-
-    if cv2.waitKey(500) & 0xFF == ord('q'):
-        # cv2.imwrite("detectLicensePlate/"+str(count)+".jpg", img)
-        break
+if __name__ == "__main__":
+    main()
